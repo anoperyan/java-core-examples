@@ -7,5 +7,8 @@ package hm.net.thread.java.util.concurrent;
  * @author Yan Jiahong
  * Created on 2022/6/21
  */
-public class HmRejectedExecutionException extends RuntimeException {
+public class HRejectedExecutionException extends RuntimeException {
+    public HRejectedExecutionException(String message) {
+        super(message);
+    }
 }

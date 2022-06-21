@@ -20,7 +20,7 @@ public interface HExecutorService extends HmExecutor {
 
     void shutdownNow();
 
-    HFuture<?> submit(HRunnable task);
+    Future<?> submit(Runnable task);
 }
 
 

@@ -22,10 +22,10 @@ public interface HmExecutor {
      * 在将来的额某个时间执行给定的指令
      *
      * @param command runnable任务
-     * @throws HmRejectedExecutionException 当这个任务无法被接受执行
+     * @throws HRejectedExecutionException 当这个任务无法被接受执行
      * @throws NullPointerException         如果执行指令为空。
      */
-    void execute(HRunnable command);
+    void execute(Runnable command);
 }
 
 
