@@ -294,8 +294,8 @@ public class HmHashMap<K, V> extends AbstractMap<K, V>
         if ((tab = table) != null
                 && (n = tab.length) > 0
                 && (first = tab[(n - 1) & hash]) != null) {
-            if (first.hash == hash &&
-                    ((k = first.key) == key || k.equals(key)))
+            //if (first.hash == hash &&
+            //        ((k = first.key) == key || k.equals(key)))
         }
         return null;
     }
