@@ -1,12 +1,14 @@
 package hm.net.map;
 
+import java.io.Serializable;
 import java.util.*;
 
 /**
  * @author Yan Jiahong
  * Created on 2022/6/20
  */
-public class HmHashMap<K, V> implements Map<K, V> {
+public class HmHashMap<K, V> extends AbstractMap<K, V>
+        implements Map<K, V>, Cloneable, Serializable {
     private static final long serialVersionUID = 362498820763181265L;
 
     /**
@@ -28,13 +30,13 @@ public class HmHashMap<K, V> implements Map<K, V> {
     static class Node<K, V> implements Map.Entry<K, V> {
         final int hash;
         final K key;
-        V val;
+        V value;
         Node<K, V> next;
 
-        public Node(int hash, K key, V val, Node<K, V> next) {
+        public Node(int hash, K key, V value, Node<K, V> next) {
             this.hash = hash;
             this.key = key;
-            this.val = val;
+            this.value = value;
             this.next = next;
         }
 
@@ -45,22 +47,21 @@ public class HmHashMap<K, V> implements Map<K, V> {
 
         @Override
         public V getValue() {
-            return val;
+            return value;
         }
 
         @Override
         public V setValue(V newVal) {
-            V oldVal = val;
-            val = newVal;
+            V oldVal = value;
+            value = newVal;
             return oldVal;
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(key) ^ Objects.hashCode(val);
+            return Objects.hash(key) ^ Objects.hashCode(value);
         }
     }
-
 
     /**
      * HashMap中的哈希表（HashTable）的装载因子。
@@ -77,43 +78,53 @@ public class HmHashMap<K, V> implements Map<K, V> {
      */
     int threshold;
 
+    transient int modCount;
+
+    transient int size;
+
     public HmHashMap() {
         this.loadFactor = DEFAULT_LOAD_FACTOR;
     }
 
     @Override
-    public int size() {
-        return 0;
+    public String toString() {
+        return "";
     }
 
-    @Override
+    public int size() {
+        return size;
+    }
+
     public boolean isEmpty() {
         return false;
     }
 
-    @Override
     public boolean containsKey(Object key) {
         return false;
     }
 
-    @Override
     public boolean containsValue(Object value) {
         return false;
     }
 
-    public V put(K key, V val) {
-        return val;
+    public V put(K key, V value) {
+        return putVal(hash(key), key, value, false, true);
+    }
+
+    @Override
+    public Set<Entry<K, V>> entrySet() {
+        return new HashSet<>();
     }
 
     /**
      * @param hash
      * @param key
-     * @param val
+     * @param value
      * @param onlyIfAbsent
      * @param evict
      * @return
      */
-    public V putVal(int hash, K key, V val, boolean onlyIfAbsent, boolean evict) {
+    public V putVal(int hash, K key, V value, boolean onlyIfAbsent, boolean evict) {
         // 当前的hashtable
         Node<K, V>[] tab;
         // 上一个节点
@@ -124,38 +135,43 @@ public class HmHashMap<K, V> implements Map<K, V> {
             n = (tab = resize()).length;
         if ((p = tab[i = (n - 1) & hash]) == null) {
             // 当前槽位还没有任何数据占用！
+            tab[i] = newNode(hash, key, value, null);
+        } else {
+            // 当前位置已经有至少一个条目占用，需要使用链表堆叠
+            Node<K, V> e;
+            K k;
+            if (p.hash == hash &&
+                    ((k = p.key) == key || (key != null && key.equals(k))))
+                // 两者hashCode相同，并且key相等（int等值时）或者key值一样（字符串时），则直接将旧值替换为新值
+                e = p;
+            else {
+                for (int binCount = 0; ; ++binCount) {
+                    if ((e = p.next) == null) {
+                        p.next = newNode(hash, key, value, null);
+                        break;
+                    }
+                    if (e.hash == hash &&
+                            ((k = e.key) == key || (key != null && key.equals(k))))
+                        break;
+                    p = e;
+                }
+            }
+            if (e != null) {
+                V oldValue = e.value;
+                if (!onlyIfAbsent || oldValue == null)
+                    e.value = value;
+                return oldValue;
+            }
+        }
+        ++modCount;
+        if (++size > threshold) {
+            resize();
         }
         return null;
     }
 
-    @Override
-    public V remove(Object key) {
-        return null;
-    }
-
-    @Override
-    public void putAll(Map<? extends K, ? extends V> m) {
-
-    }
-
-    @Override
-    public void clear() {
-
-    }
-
-    @Override
-    public Set<K> keySet() {
-        return null;
-    }
-
-    @Override
-    public Collection<V> values() {
-        return null;
-    }
-
-    @Override
-    public Set<Entry<K, V>> entrySet() {
-        return null;
+    Node<K, V> newNode(int hash, K key, V val, Node<K, V> next) {
+        return new Node<>(hash, key, val, next);
     }
 
     final Node<K, V>[] resize() {
@@ -263,10 +279,9 @@ public class HmHashMap<K, V> implements Map<K, V> {
         return newTab;
     }
 
-    @Override
     public V get(Object key) {
         Node<K, V> e;
-        return (e = getNode(hash(key), key)) == null ? null : e.val;
+        return (e = getNode(hash(key), key)) == null ? null : e.value;
         //return null;
     }
 
@@ -279,6 +294,8 @@ public class HmHashMap<K, V> implements Map<K, V> {
         if ((tab = table) != null
                 && (n = tab.length) > 0
                 && (first = tab[(n - 1) & hash]) != null) {
+            if (first.hash == hash &&
+                    ((k = first.key) == key || k.equals(key)))
         }
         return null;
     }
