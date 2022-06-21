@@ -1,7 +1,7 @@
-package hm.net.thread;
+package hm.net.src.thread;
 
-import hm.net.thread.java.util.concurrent.HExecutorService;
-import hm.net.thread.java.util.concurrent.HExecutors;
+import hm.net.src.thread.java.util.concurrent.HExecutorService;
+import hm.net.src.thread.java.util.concurrent.HExecutors;
 
 /**
  * @author Yan Jiahong

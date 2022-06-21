@@ -1,4 +1,4 @@
-package hm.net.map;
+package hm.net.src.map;
 
 import java.util.HashMap;
 import java.util.Map;

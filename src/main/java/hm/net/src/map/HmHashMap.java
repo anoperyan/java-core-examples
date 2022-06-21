@@ -1,4 +1,4 @@
-package hm.net.map;
+package hm.net.src.map;
 
 import java.io.Serializable;
 import java.util.*;

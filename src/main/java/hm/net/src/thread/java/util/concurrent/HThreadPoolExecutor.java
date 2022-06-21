@@ -1,11 +1,13 @@
-package hm.net.thread.java.util.concurrent;
+package hm.net.src.thread.java.util.concurrent;
 
 import java.security.AccessControlContext;
 import java.security.AccessController;
+import java.util.HashSet;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.AbstractQueuedSynchronizer;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * @author Yan Jiahong
@@ -60,11 +62,11 @@ public class HThreadPoolExecutor extends HAbstractExecutorService {
     COUNT_BITS = 000 00000000000000000000000011101
     CAPACITY   = 000 11111111111111111111111111111
 
-    RUNNING    = 111 00000000000000000000000000000
     SHUTDOWN   = 000 00000000000000000000000000000
     STOP       = 001 00000000000000000000000000000
     TIDYING    = 010 00000000000000000000000000000
     TERMINATED = 011 00000000000000000000000000000
+    RUNNING    = 111 00000000000000000000000000000
      */
     public static void printState() {
         System.out.printf("COUNT_BITS = %32s\r\n", zeroPaddingBinaryString(COUNT_BITS));
@@ -88,6 +90,11 @@ public class HThreadPoolExecutor extends HAbstractExecutorService {
     }
 
     private final AccessControlContext acc;
+
+    /**
+     * 锁定访问worker集合和相关的簿记
+     */
+    private final ReentrantLock mainLock = new ReentrantLock();
 
     /**
      * 核心线程数是保持工作线程（worker）存活的最小线程。
@@ -205,40 +212,170 @@ public class HThreadPoolExecutor extends HAbstractExecutorService {
          * */
         int c = ctl.get();
         if (workerCountOf(c) < corePoolSize) {
-
+            if (addWorker(command, true))
+                // 当添加worker成功，直接返回
+                return;
         }
     }
 
     /**
-     * @param firstTask
-     * @param core
-     * @return
+     * 包含所有worker线程的集合，只有当持有mainLock时候才能访问
+     */
+    private final HashSet<Worker> workers = new HashSet<>();
+
+    /**
+     * 跟踪达到的最大的线程数量，只有当持有mainLock才能访问
+     */
+    private int largestPoolSize;
+
+    /**
+     * @param firstTask 新线程应该运行的第一个任务
+     * @param core      是否使用corePoolSize作为边界，否则使用maximumPoolSize作为边界
+     * @return 是否添加成功
      */
     private boolean addWorker(Runnable firstTask, boolean core) {
         retry:
         for (; ; ) {
+            // 获取到当前的ctl值
             int c = ctl.get();
+            // 获取当前的运行状态
             int rs = runStateOf(c);
-            if (rs >= SHUTDOWN &&
+            if (rs >= SHUTDOWN &&       // 当前执行器正处于shutdown流程之中，只有RUNNING的值时小于SHUTDOWN的
                     !(rs == SHUTDOWN
                             && firstTask == null &&
                             !workQueue.isEmpty()))
+                /*
+                条件理解：当执行器状态大于等于SHUTDOWN的前提下，
+                        如果状态为SHUTDOWN且首个任务为空且队列不为空的情况下
+                        不直接返回false，否则就直接返回false
+                 */
                 return false;
             for (; ; ) {
                 int wc = workerCountOf(c);
                 if (wc >= CAPACITY ||
                         wc >= (core ? corePoolSize : maximumPoolSize))
+                    // 如果当前的线程已经达到了当前允许的最大值，也返回false
                     return false;
-                if (compareAndIncrementWorkCount(c))
+                if (compareAndIncrementWorkCount(c))  // 尝试增加计数
+                    // 如果添加计数成功，则跳出循环
                     break retry;
+                // 添加执行器的worker计数失败，则继续重新执行外循环
                 c = ctl.get();
                 if (runStateOf(c) != rs)
                     continue retry;
             }
         }
+        // 到此，计数器计数已经添加成功！
+
         boolean workerStarted = false;
         boolean workerAdded = false;
+        Worker w = null;
+        try {
+            w = new Worker(firstTask);
+            final Thread t = w.thread;
+            if (null != t) {
+                final ReentrantLock mainLock = this.mainLock;
+                mainLock.lock();
+                try {
+                    int rs = runStateOf(ctl.get());
+                    if (rs < SHUTDOWN ||
+                            (rs == SHUTDOWN && firstTask == null)) {
+                        // 如果执行器正在运行 或者 执行器正在SHUTDOWN或者首个任务为空
+                        if (t.isAlive())
+                            throw new IllegalThreadStateException();
+                        workers.add(w);
+                        int s = workers.size();
+                        if (s > largestPoolSize)
+                            largestPoolSize = s;
+                        workerAdded = true;
+                    }
+                } finally {
+                    mainLock.unlock();
+                }
+                if (workerAdded) {
+                    t.start();
+                    workerStarted = true;
+                }
+            }
+        } finally {
+            if (!workerStarted) {
+
+            }
+        }
+
+
         return false;
+    }
+
+    /**
+     * 回滚worker线程的创建
+     * - 将worker从worker集合中移除
+     * - 递减worker的计数量
+     * -
+     */
+    private void addWorkerFailed(Worker w) {
+        final ReentrantLock mainLock = this.mainLock;
+        mainLock.lock();
+        try {
+            if (w != null)
+                workers.remove(w);
+            decreaseWorkerCount();
+        } finally {
+            mainLock.unlock();
+        }
+    }
+
+    /**
+     * 如果状态是SHUTDOWN且队列为空或者状态是STOP并且队列为空，则转换到终止状态。
+     * 如果有资格终止，但是workerCount不为0，则打断一个空闲worker去确保关闭信号量传播。
+     * 该方法必须在任何有可能导致终止的操作之后调佣 -- 在shutdown期间减少worker数量和移除任务。
+     */
+    final void tryTerminate() {
+        for (; ; ) {
+            int c = ctl.get();
+            if (isRunning(c) ||
+                    runStateAtLeast(c, TIDYING) ||
+                    (runStateOf(c) == SHUTDOWN && !workQueue.isEmpty()))
+                return;
+            if (workerCountOf(c) != 0) {
+                interruptIdleWorkers(true);
+                return;
+            }
+        }
+    }
+
+    /**
+     * @param onlyOne 如果是true，则打断最多一个worker。
+     */
+    private void interruptIdleWorkers(boolean onlyOne) {
+        final ReentrantLock mainLock = this.mainLock;
+        mainLock.lock();
+        try {
+            for (Worker w : workers) {
+                Thread t = w.thread;
+                if (!t.isInterrupted() && w.tryLock()) {
+                    try {
+                        t.interrupt();
+                    } catch (SecurityException ignore) {
+                    } finally {
+                        w.unlock();
+                    }
+                }
+                if (onlyOne) {
+                    break;
+                }
+            }
+        } finally {
+            mainLock.unlock();
+        }
+    }
+
+    private boolean runStateAtLeast(int c, int s) {
+        return c >= s;
+    }
+
+    private boolean isRunning(int c) {
+        return c < SHUTDOWN;
     }
 
     private final class Worker extends AbstractQueuedSynchronizer implements Runnable {
@@ -271,6 +408,14 @@ public class HThreadPoolExecutor extends HAbstractExecutorService {
         public void lock() {
             acquire(1);
         }
+
+        public void unlock() {
+            release(1);
+        }
+
+        public boolean tryLock() {
+            return tryAcquire(1);
+        }
     }
 
     /**
@@ -281,7 +426,7 @@ public class HThreadPoolExecutor extends HAbstractExecutorService {
         Thread wt = Thread.currentThread();
         Runnable task = w.firstTask;
         w.firstTask = null;
-        //w.unlock();
+        w.unlock();
     }
 
     public static class HAbortPolicy implements HRejectedExecutionHandler {
@@ -293,6 +438,39 @@ public class HThreadPoolExecutor extends HAbstractExecutorService {
             throw new HRejectedExecutionException("Task " + r.toString()
                     + " rejected from " + executor.toString());
         }
+    }
+
+    /**
+     * 执行阻塞或者定时等待，这依赖于当前的配置设置，或者当前worker必须因为以下原因之一必须退出时返回null
+     * 1. worker的数量超过了maximumPoolSize（因为调用了setMaximumSize）.
+     * 2. 当前线程池已经停止。
+     * 3. 当前线程池已经是shutdown状态，并且队列是空的。、
+     * 4. worker等待任务超时，并且等待超时的worker会被终止。
+     *
+     * @return 任务，或者为null
+     */
+    private Runnable getTask() {
+        boolean timedOut = false;
+        for (; ; ) {
+            int c = ctl.get();
+            int rs = runStateOf(c);
+
+            // 仅在必要时候检查队列是否为空
+            if (rs >= SHUTDOWN && (rs > STOP || workQueue.isEmpty())) {
+                decreaseWorkerCount();
+                return null;
+            }
+        }
+    }
+
+    private boolean compareAndDecreaseWorkerCount(int except) {
+        return ctl.compareAndSet(except, except - 1);
+    }
+
+    private void decreaseWorkerCount() {
+        do {
+            // do nothing
+        } while (!compareAndDecreaseWorkerCount(ctl.get()));
     }
 
     /**

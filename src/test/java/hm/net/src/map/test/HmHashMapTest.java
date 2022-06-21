@@ -1,6 +1,6 @@
-package hm.net.map.test;
+package hm.net.src.map.test;
 
-import hm.net.map.HmHashMap;
+import hm.net.src.map.HmHashMap;
 import org.junit.Test;
 
 /**
