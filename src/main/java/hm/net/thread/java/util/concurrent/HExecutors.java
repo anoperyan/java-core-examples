@@ -5,6 +5,18 @@ package hm.net.thread.java.util.concurrent;
  * Created on 2022/6/21
  */
 public class HExecutors {
+    /**
+     * 创建一个线程，该线程池重用在共享无界队列上运行的固定数量的线程。
+     *
+     * @param nThreads 池中线程的数量
+     * @return 新创建的线程池
+     * @throws IllegalArgumentException 如果nThreads <= 0
+     */
+    public static HExecutorService newFixedThreadPool(int nThreads) {
+
+    }
+
+    public
 
     /**
      * 将一个Runnable转换为一个Callable

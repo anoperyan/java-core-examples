@@ -25,7 +25,7 @@ public interface HmExecutor {
      * @throws HmRejectedExecutionException 当这个任务无法被接受执行
      * @throws NullPointerException         如果执行指令为空。
      */
-    void execute(Runnable command);
+    void execute(HRunnable command);
 }
 
 
