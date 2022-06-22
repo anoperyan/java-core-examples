@@ -1,4 +1,4 @@
-package hm.net.src.thread;
+package hm.net.src.thread.example;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -20,6 +20,7 @@ public class Test {
     private static final int TERMINATED = 3 << COUNT_BITS;
 
     public static void main(String[] args) {
+
         System.out.printf("-1            = %32s\r\n", zeroPaddingBinaryString(-1));
         System.out.printf("RUNNING       = %32s\r\n", zeroPaddingBinaryString(RUNNING));
         System.out.printf("SHUTDOWN      = %32s\r\n", zeroPaddingBinaryString(SHUTDOWN));

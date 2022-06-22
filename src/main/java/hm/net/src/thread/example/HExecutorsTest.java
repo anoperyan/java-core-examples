@@ -1,4 +1,4 @@
-package hm.net.src.thread;
+package hm.net.src.thread.example;
 
 import hm.net.src.thread.java.util.concurrent.HExecutorService;
 import hm.net.src.thread.java.util.concurrent.HExecutors;
