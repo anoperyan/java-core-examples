@@ -1,4 +1,4 @@
-package hm.net.src.thread.java.util.concurrent;
+package hm.net.src.thread.example.hsemaphore;
 
 import java.util.concurrent.locks.AbstractQueuedSynchronizer;
 
@@ -10,14 +10,14 @@ import java.util.concurrent.locks.AbstractQueuedSynchronizer;
  * @author Yan Jiahong
  * Created on 2022/6/22
  */
-public class HSemaphore {
+public class MySemaphore {
 
     private final Sync sync;
 
     /**
      * 信号量的同步的实现，使用AQS的state字段表示许可证数量，子类分为公平和不公平版本。
      */
-    abstract static class Sync extends AbstractQueuedSynchronizer {
+    static class Sync extends AbstractQueuedSynchronizer {
         /**
          * @param permits 当前信号量的许可证总数。
          */
@@ -25,22 +25,19 @@ public class HSemaphore {
             setState(permits);
         }
 
-        final int getPermits() {
-            return getState();
+        @Override
+        protected boolean tryAcquire(int permits) {
+
+        }
+
+        @Override
+        protected boolean tryRelease(int permits) {
+            setState();
         }
     }
 
-    static class NonFairSync extends Sync {
-        /**
-         * @param permits 当前信号量的许可证总数。
-         */
-        NonFairSync(int permits) {
-            super(permits);
-        }
-    }
-
-    public HSemaphore(int permits) {
-        this.sync = new NonFairSync(permits);
+    public MySemaphore(int permits) {
+        this.sync = new Sync(permits);
     }
 
     /**
