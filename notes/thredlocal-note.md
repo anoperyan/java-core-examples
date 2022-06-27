@@ -1,6 +1,14 @@
 Thread
 
-## 简述工作原理
+## 谈谈对ThreadLocal理解
+
+ThreadLocal通常用来持有希望将状态与线程相关联的私有静态字段，比如用户名，Token，事务ID等。 ThreadLocal提供了线程局部变量，
+变量是通过get，set方法访问，每个线程都有他自己的，独立初始化的ThreadLocal副本。 他的基本原理是，在每个Thread中都有一个以ThreadLocal变量为key的Map，
+
+当在代码中调用ThreadLocal.set方法时候，threadLocal会调用Thread.currentThread来获取到当前线程，然后再操作当前线程的ThreadLocalMap。
+Get方法时候也是先查询出当前线程，然后再从当前线程的threadLocalMap中以threadLocal变量为key来查询值。
+
+ThreadLocal使用不当会造成内存泄漏，比如调用threadLocal的set而不调用remove时候，若该线程长期生存的话，则会造成内存泄漏。
 
 ## 常见问题
 
