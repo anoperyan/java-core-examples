@@ -1,5 +1,7 @@
 package hm.net.exam;
 
+import sun.misc.Unsafe;
+
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -20,18 +22,20 @@ public class Test {
     private static final int TERMINATED = 3 << COUNT_BITS;
 
     public static void main(String[] args) {
+        Unsafe unsafe = Unsafe.getUnsafe();
+        System.out.println(unsafe);
 
-        System.out.printf("-1            = %32s\r\n", zeroPaddingBinaryString(-1));
-        System.out.printf("RUNNING       = %32s\r\n", zeroPaddingBinaryString(RUNNING));
-        System.out.printf("SHUTDOWN      = %32s\r\n", zeroPaddingBinaryString(SHUTDOWN));
-        System.out.printf("STOP          = %32s\r\n", zeroPaddingBinaryString(STOP));
-        System.out.printf("TIDYING       = %32s\r\n", zeroPaddingBinaryString(TIDYING));
-        System.out.printf("TERMINATED    = %32s\r\n", zeroPaddingBinaryString(TERMINATED));
-        ExecutorService executor = Executors.newFixedThreadPool(10);
-        executor.submit(() -> {
-            System.out.println("hello world");
-            System.out.println("hello world");
-        });
+        //System.out.printf("-1            = %32s\r\n", zeroPaddingBinaryString(-1));
+        //System.out.printf("RUNNING       = %32s\r\n", zeroPaddingBinaryString(RUNNING));
+        //System.out.printf("SHUTDOWN      = %32s\r\n", zeroPaddingBinaryString(SHUTDOWN));
+        //System.out.printf("STOP          = %32s\r\n", zeroPaddingBinaryString(STOP));
+        //System.out.printf("TIDYING       = %32s\r\n", zeroPaddingBinaryString(TIDYING));
+        //System.out.printf("TERMINATED    = %32s\r\n", zeroPaddingBinaryString(TERMINATED));
+        //ExecutorService executor = Executors.newFixedThreadPool(10);
+        //executor.submit(() -> {
+        //    System.out.println("hello world");
+        //    System.out.println("hello world");
+        //});
     }
 
     private static String zeroPaddingBinaryString(int val) {

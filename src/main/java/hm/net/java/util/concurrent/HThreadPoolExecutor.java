@@ -10,6 +10,8 @@ import java.util.concurrent.locks.AbstractQueuedSynchronizer;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
+ * 参考{@link java.util.concurrent.ThreadPoolExecutor}
+ *
  * @author Yan Jiahong
  * Created on 2022/6/21
  */
