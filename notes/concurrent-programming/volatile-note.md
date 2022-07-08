@@ -10,5 +10,4 @@ Java规范保证了所有声明为`volatile`的变量的读和写的原子性，
 
 ## 参考
 
-1. [
-   Java - Volatile reference object and its member fields visibility](https://www.logicbig.com/tutorials/core-java-tutorial/java-multi-threading/volatile-ref-object.html)
+1. [Java - Volatile reference object and its member fields visibility](https://www.logicbig.com/tutorials/core-java-tutorial/java-multi-threading/volatile-ref-object.html)
